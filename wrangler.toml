@@ -1,0 +1,16 @@
+name = "scheduled-publish-news"          # 项目名称
+main = "worker.py"                    # 入口文件
+compatibility_date = "2024-04-11"     # 兼容性日期
+
+[triggers]
+# cron 表达式配置，定义何时触发 worker.py 中的 scheduled 函数
+# "*/10 * * * *" 表示：
+# - 第一个 * 前的 */10 表示每隔10分钟
+# - 第二个 * 表示任意小时
+# - 第三个 * 表示任意日期
+# - 第四个 * 表示任意月份
+# - 第五个 * 表示任意星期
+crons = ["*/10 * * * *"]
+
+[build]
+command = "python -m pip install -r requirements.txt"

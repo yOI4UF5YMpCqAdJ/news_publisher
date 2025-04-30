@@ -48,7 +48,7 @@ class NewsPublisher:
             source_name = source["name"]
             logging.info(f"处理新闻源: {source_name}({source_id})")
             
-            # 获取数据库中的最新记录
+            # 获取数据库中的最新记录，默认前90条
             db_records = db_news_infos.get_latest_by_sourceId(source_id)
             db_orig_ids = set()
             if db_records:
@@ -67,10 +67,11 @@ class NewsPublisher:
                 # new_items = [item for item in api_data["items"] if str(item["id"]) not in db_orig_ids]
             except Exception as e:
                 logging.error(f"发现新闻时出错:{e}")
+                continue
             
-            if new_items:
-                # 删除已发布的信息
-                db_push_info_latest.delete_by_type_and_source(source_id)
+            # if new_items:
+            #     # 删除已发布的信息
+            #     db_push_info_latest.delete_by_type_and_source(source_id)
 
             # 统计成功插入的数量
             success_count = 0
@@ -98,7 +99,10 @@ class NewsPublisher:
                     if push_result:
                         success_count += 1
             
-            if new_items:
+             # 新数据处理完成后，保留最新的30条记录，删除多余的旧记录
+          
+            if new_items and success_count > 0:
+                db_push_info_latest.delete_excess_by_source_id(source_id, keep_count=30)
                 logging.info(f"source_id: {source_id}, 来源: {source_name} - 成功处理 {success_count} 条新闻")
             
         logging.info("完成新闻推送处理")

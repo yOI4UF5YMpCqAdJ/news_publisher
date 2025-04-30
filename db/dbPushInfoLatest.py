@@ -99,7 +99,55 @@ class dbPushInfoLatest:
         except Exception as e:
             logging.error(f"查询推送信息时发生错误: {e}")
             return None
-
+        
+    def delete_excess_by_source_id(self, source_id: str, keep_count: int = 30, news_type: str = "news") -> bool:
+        """
+        保留指定source_id最新的keep_count条记录，删除多余的记录
+        
+        Args:
+            source_id: 渠道ID
+            keep_count: 保留的记录数量，默认30条
+            news_type: 推送类型（stock/news），默认为"news"
+            
+        Returns:
+            bool: 操作是否成功
+        """
+        if not self.db:
+            logging.error("数据库连接不存在")
+            return False
+        
+        # 使用单条SQL语句删除多余记录，保留最新的keep_count条
+        sql = """
+            DELETE FROM pushinfo_latest
+            WHERE sourceId = %s 
+            AND newsType = %s
+            AND id NOT IN (
+                SELECT id FROM (
+                    SELECT id FROM pushinfo_latest
+                    WHERE sourceId = %s AND newsType = %s
+                    ORDER BY createDateTime DESC
+                    LIMIT %s
+                ) AS temp
+            )
+        """
+        
+        try:
+            success = self.db.execute(sql, (source_id, news_type, source_id, news_type, keep_count))
+            if success:
+                rows_affected = self.db.get_rows_affected()
+                self.db.commit()
+                logging.info(f"渠道ID: {source_id} 成功删除 {rows_affected} 条过期记录，保留 {keep_count} 条最新记录")
+                return True
+            else:
+                self.db.rollback()
+                logging.error(f"删除过期记录失败，渠道ID: {source_id}")
+                return False
+                
+        except Exception as e:
+            self.db.rollback()
+            logging.error(f"删除过期记录时发生错误: {e}", exc_info=True)
+            return False
+    
     def delete_by_type_and_source(self, source_id: str, news_type: str = "news") -> bool:
         """
         删除指定新闻类型和来源的所有记录

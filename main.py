@@ -117,7 +117,7 @@ if __name__ == "__main__":
         news_publisher.push_news()
         logging.info("任务执行完成")
 
-            # 在处理新闻之前，先清理旧数据
+        # 在处理新闻之前，先清理旧数据
         cleanup_result = db_news_infos.cleanup_old_records(os.environ.get("max_news_infos_data"))
         if cleanup_result > 0:
             logging.info(f"清理了 {cleanup_result} 条旧新闻记录")

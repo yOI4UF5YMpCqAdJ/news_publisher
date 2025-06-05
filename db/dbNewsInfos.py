@@ -147,54 +147,78 @@ class dbNewsInfos:
             logging.error(f"插入新闻数据时发生错误: {e}")
             return None
 
-    def cleanup_old_records(self, max_records: int = 5000):
+    def cleanup_old_records(self, max_records_str):
         """
         清理新闻信息表中的旧记录，保留最新的指定数量记录
         
         Args:
-            max_records: 最大保留记录数，默认5000条
+            max_records_str: 最大保留记录数的字符串
+            
+        Returns:
+            int: 删除的记录数量
         """
         try:
+            # 解析最大记录数
+            if not max_records_str or not max_records_str.isdigit():
+                logging.warning("max_records_str 参数无效，使用默认值 5000")
+                max_records = 5000
+            else:
+                max_records = int(max_records_str)
+            
             # 首先查询总记录数
             count_query = "SELECT COUNT(*) FROM news_infos"
-            cursor = self.db.connection.cursor()
-            cursor.execute(count_query)
-            total_count = cursor.fetchone()[0]
+            success = self.db.execute(count_query)
+            if not success:
+                logging.error("查询记录总数失败")
+                return -1
+                
+            result = self.db.fetchone()
+            if not result:
+                logging.error("获取记录总数失败")
+                return -1
+                
+            total_count = result[0]
             
             if total_count > max_records:
                 # 计算需要删除的记录数
                 delete_count = total_count - max_records
                 
-                # 删除最旧的记录（假设有id或created_time字段用于排序）
-                # 这里假设按id排序，你可能需要根据实际表结构调整
-                delete_query = """
-                DELETE FROM news_infos 
-                WHERE id NOT IN (
-                    SELECT id FROM (
-                        SELECT id FROM news_infos 
-                        ORDER BY id DESC 
-                        LIMIT %s
-                    ) AS keep_records
-                )
+                # 先获取要保留的最新记录的最小ID
+                min_id_query = """
+                SELECT id FROM news_infos 
+                ORDER BY createDateTime DESC 
+                LIMIT 1 OFFSET %s
                 """
-                
-                cursor.execute(delete_query, (max_records,))
-                self.db.connection.commit()
-                
-                logging.info(f"成功删除 {delete_count} 条旧记录，当前保留 {max_records} 条最新记录")
-                return delete_count
+                success = self.db.execute(min_id_query, (max_records - 1,))
+                if not success:
+                    logging.error("查询最小保留ID失败")
+                    return -1
+                    
+                result = self.db.fetchone()
+                if result:
+                    min_keep_id = result[0]
+                    # 删除比这个ID更小的记录
+                    delete_query = "DELETE FROM news_infos WHERE id < %s"
+                    success = self.db.execute(delete_query, (min_keep_id,))
+                    if success:
+                        self.db.commit()
+                        logging.info(f"成功删除 {delete_count} 条旧记录，当前保留 {max_records} 条最新记录")
+                        return delete_count
+                    else:
+                        self.db.rollback()
+                        logging.error("执行删除操作失败")
+                        return -1
+                else:
+                    logging.warning("未找到要保留的记录")
+                    return 0
             else:
                 logging.info(f"当前记录数 {total_count} 未超过限制 {max_records}，无需清理")
                 return 0
                 
         except Exception as e:
-            logging.error(f"清理旧记录时发生错误: {e}")
-            if self.db.connection:
-                self.db.connection.rollback()
+            logging.error(f"清理旧记录时发生错误: {e}", exc_info=True)
+            self.db.rollback()
             return -1
-        finally:
-            if cursor:
-                cursor.close()
 
 # 创建实例供直接导入使用
 db_news_infos = dbNewsInfos()

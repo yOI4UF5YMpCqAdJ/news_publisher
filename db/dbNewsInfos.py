@@ -147,5 +147,54 @@ class dbNewsInfos:
             logging.error(f"插入新闻数据时发生错误: {e}")
             return None
 
+    def cleanup_old_records(self, max_records: int = 5000):
+        """
+        清理新闻信息表中的旧记录，保留最新的指定数量记录
+        
+        Args:
+            max_records: 最大保留记录数，默认5000条
+        """
+        try:
+            # 首先查询总记录数
+            count_query = "SELECT COUNT(*) FROM news_infos"
+            cursor = self.db.connection.cursor()
+            cursor.execute(count_query)
+            total_count = cursor.fetchone()[0]
+            
+            if total_count > max_records:
+                # 计算需要删除的记录数
+                delete_count = total_count - max_records
+                
+                # 删除最旧的记录（假设有id或created_time字段用于排序）
+                # 这里假设按id排序，你可能需要根据实际表结构调整
+                delete_query = """
+                DELETE FROM news_infos 
+                WHERE id NOT IN (
+                    SELECT id FROM (
+                        SELECT id FROM news_infos 
+                        ORDER BY id DESC 
+                        LIMIT %s
+                    ) AS keep_records
+                )
+                """
+                
+                cursor.execute(delete_query, (max_records,))
+                self.db.connection.commit()
+                
+                logging.info(f"成功删除 {delete_count} 条旧记录，当前保留 {max_records} 条最新记录")
+                return delete_count
+            else:
+                logging.info(f"当前记录数 {total_count} 未超过限制 {max_records}，无需清理")
+                return 0
+                
+        except Exception as e:
+            logging.error(f"清理旧记录时发生错误: {e}")
+            if self.db.connection:
+                self.db.connection.rollback()
+            return -1
+        finally:
+            if cursor:
+                cursor.close()
+
 # 创建实例供直接导入使用
 db_news_infos = dbNewsInfos()

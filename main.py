@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import logging
 from typing import List, Dict
@@ -115,6 +116,12 @@ if __name__ == "__main__":
         logging.info(f"务执开始执行")
         news_publisher.push_news()
         logging.info("任务执行完成")
+
+            # 在处理新闻之前，先清理旧数据
+        cleanup_result = db_news_infos.cleanup_old_records(os.environ.get("max_news_infos_data"))
+        if cleanup_result > 0:
+            logging.info(f"清理了 {cleanup_result} 条旧新闻记录")
+    
 
 
     except Exception as e:

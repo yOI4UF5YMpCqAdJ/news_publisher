@@ -4,8 +4,10 @@ import logging
 from typing import List, Dict, Optional
 from pathlib import Path
 
+
 class NewsApi:
     """
+    news-now 项目中的API
     新闻API调用类，负责从远程API获取新闻数据
     """
     def __init__(self):

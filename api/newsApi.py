@@ -11,7 +11,7 @@ class NewsApi:
     新闻API调用类，负责从远程API获取新闻数据
     """
     def __init__(self):
-        self.base_url = "https://ai.kakasong.cn/api/direct-latest"
+        self.base_url = "https://fork-newsnow.pages.dev/api/direct-latest"
         self.source_file = Path(__file__).parent.parent / "news-source.json"
         self.sources: List[Dict] = []
         self._load_sources()

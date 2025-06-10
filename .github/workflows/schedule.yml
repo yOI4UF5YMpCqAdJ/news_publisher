@@ -3,7 +3,7 @@ name: Run News Publisher
 on:
   schedule:
       # - cron: '0 */4 * * *'  # 每4小时运行一次
-    - cron: '0 8 * * *'  # 每天8点运行一次
+    - cron: '0 */8 * * *'  # 每天8点运行一次
   workflow_dispatch:  # 允许手动触发
 
 jobs:
